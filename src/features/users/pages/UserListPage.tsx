@@ -6,11 +6,15 @@ import { Table } from '../../../shared/components/Table';
 import { Button } from '../../../shared/components/Button';
 import { Input } from '../../../shared/components/Input';
 import { UserDetailModal } from '../components/UserDetailModal';
+import { UserModal } from '../components/UserModal';
+import { DevelopmentModal } from '../components/DevelopmentModal';
 
 export const UserListPage: React.FC = () => {
   const { data: users, isLoading, error } = useUsers();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDevelopmentModalOpen, setIsDevelopmentModalOpen] = useState(false);
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     role: 'all',
@@ -21,8 +25,8 @@ export const UserListPage: React.FC = () => {
 
   const filteredUsers = users?.filter(user => {
     const matchesSearch = !filters.search || 
-      user.firstName.toLowerCase().includes(filters.search.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(filters.search.toLowerCase()) ||
+      user.firstName?.toLowerCase().includes(filters.search.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(filters.search.toLowerCase()) ||
       user.email.toLowerCase().includes(filters.search.toLowerCase());
     
     const matchesRole = filters.role === 'all' || user.role === filters.role;
@@ -59,6 +63,20 @@ export const UserListPage: React.FC = () => {
     setIsDetailModalOpen(true);
   };
 
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCreateUser = () => {
+    setSelectedUser(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleRoleChangeClick = () => {
+    setIsDevelopmentModalOpen(true);
+  };
+
   const updateFilter = (key: keyof UserFilters, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
@@ -66,18 +84,18 @@ export const UserListPage: React.FC = () => {
   const columns = [
     {
       key: 'firstName' as keyof User,
-      header: 'Name',
+      header: 'Nama',
       sortable: true,
       render: (value: string, user: User) => (
         <div className="flex items-center">
           <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
             <span className="text-sm font-medium text-white">
-              {user.firstName[0]}{user.lastName[0]}
+              {user.firstName?.[0] || user.email[0].toUpperCase()}{user.lastName?.[0] || ''}
             </span>
           </div>
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {user.firstName} {user.lastName}
+              {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email.split('@')[0]}
             </div>
           </div>
         </div>
@@ -90,13 +108,15 @@ export const UserListPage: React.FC = () => {
     },
     {
       key: 'role' as keyof User,
-      header: 'Role',
+      header: 'Peran',
       sortable: true,
       render: (value: string) => (
         <span
           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
             value === 'admin'
               ? 'bg-purple-100 text-purple-800'
+              : value === 'moderator'
+              ? 'bg-blue-100 text-blue-800'
               : 'bg-gray-100 text-gray-800'
           }`}
         >
@@ -116,37 +136,39 @@ export const UserListPage: React.FC = () => {
               : 'bg-red-100 text-red-800'
           }`}
         >
-          {value ? 'Active' : 'Inactive'}
+          {value ? 'Aktif' : 'Tidak Aktif'}
         </span>
       ),
     },
     {
       key: 'createdAt' as keyof User,
-      header: 'Created',
+      header: 'Dibuat',
       sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString(),
+      render: (value: string) => new Date(value).toLocaleDateString('id-ID'),
     },
     {
       key: 'id' as keyof User,
-      header: 'Actions',
+      header: 'Aksi',
       render: (value: string, user: User) => (
         <div className="flex space-x-2">
           <button
             onClick={() => handleViewUser(user)}
             className="text-blue-600 hover:text-blue-900"
-            title="View details"
+            title="Lihat detail"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
+            onClick={() => handleEditUser(user)}
             className="text-gray-600 hover:text-gray-900"
-            title="Edit user"
+            title="Edit pengguna"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
-            className="text-red-600 hover:text-red-900"
-            title="Delete user"
+            onClick={handleRoleChangeClick}
+            className="text-yellow-600 hover:text-yellow-900"
+            title="Ubah peran"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -167,14 +189,14 @@ export const UserListPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">User Management</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Manajemen Pengguna</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage and monitor user accounts
+            Kelola dan pantau akun pengguna
           </p>
         </div>
-        <Button>
+        <Button onClick={handleCreateUser}>
           <Plus className="h-4 w-4 mr-2" />
-          Add User
+          Tambah Pengguna
         </Button>
       </div>
 
@@ -186,7 +208,7 @@ export const UserListPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Cari pengguna..."
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className="pl-10"
@@ -199,8 +221,9 @@ export const UserListPage: React.FC = () => {
               value={filters.role}
               onChange={(e) => updateFilter('role', e.target.value)}
             >
-              <option value="all">All Roles</option>
+              <option value="all">Semua Peran</option>
               <option value="admin">Admin</option>
+              <option value="moderator">Moderator</option>
               <option value="user">User</option>
             </select>
             <select 
@@ -208,9 +231,9 @@ export const UserListPage: React.FC = () => {
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">Semua Status</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Tidak Aktif</option>
             </select>
           </div>
         </div>
@@ -220,7 +243,7 @@ export const UserListPage: React.FC = () => {
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">
-            Users ({filteredUsers.length})
+            Pengguna ({filteredUsers.length})
           </h3>
         </div>
         <Table
@@ -230,7 +253,7 @@ export const UserListPage: React.FC = () => {
           sortKey={filters.sortBy}
           sortDirection={filters.sortDirection}
           isLoading={isLoading}
-          emptyMessage="No users found"
+          emptyMessage="Tidak ada pengguna ditemukan"
         />
       </div>
 
@@ -245,6 +268,23 @@ export const UserListPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* User Edit/Create Modal */}
+      <UserModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
+
+      {/* Development Modal */}
+      <DevelopmentModal
+        isOpen={isDevelopmentModalOpen}
+        onClose={() => setIsDevelopmentModalOpen(false)}
+        feature="Pengubahan peran pengguna"
+      />
     </div>
   );
 };

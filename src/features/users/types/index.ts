@@ -1,16 +1,18 @@
 export interface User {
   id: string;
-  firstName: string;
-  lastName: string;
   email: string;
-  isActive: boolean;
   role: 'admin' | 'user' | 'moderator';
-  createdAt: Date;
-  updatedAt: Date;
+  status?: 'active' | 'inactive';
+  notesCount?: number;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Legacy fields for backward compatibility
+  firstName?: string;
+  lastName?: string;
+  isActive?: boolean;
   lastLoginAt?: Date;
   avatar?: string;
-  // Notes statistics
-  notesCount: number;
   lastNoteAt?: Date;
 }
 
@@ -28,18 +30,19 @@ export interface UserNote {
 }
 
 export interface CreateUserRequest {
-  firstName: string;
-  lastName: string;
   email: string;
+  password: string;
   role: 'admin' | 'user' | 'moderator';
 }
 
 export interface UpdateUserRequest {
-  firstName?: string;
-  lastName?: string;
   email?: string;
-  isActive?: boolean;
+  password?: string;
   role?: 'admin' | 'user' | 'moderator';
+}
+
+export interface ChangeRoleRequest {
+  role: 'admin' | 'user' | 'moderator';
 }
 
 export interface UserStats {
@@ -56,4 +59,25 @@ export interface UserStats {
     name: string;
     notesCount: number;
   } | null;
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface UsersListResponse {
+  users: User[];
+  pagination: PaginationMeta;
+}
+
+export interface UsersStatsResponse {
+  users: User[];
+  pagination: PaginationMeta;
 }

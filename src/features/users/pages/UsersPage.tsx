@@ -1,200 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Eye, 
-  Edit, 
-  Trash2, 
-  Plus, 
-  Search, 
-  Users, 
-  UserCheck, 
-  UserX, 
-  Filter, 
-  FileText, 
-  TrendingUp, 
-  Award, 
-  BarChart3,
-  Download,
-  Upload,
-  MoreVertical,
-  Star,
-  Clock,
-  Calendar
-} from 'lucide-react';
-import { useAuth } from '../../auth/contexts/AuthContext';
-import { useUsers, useUserStats } from '../hooks/useUsers';
+import React, { useState } from 'react';
+import { Plus, Users, UserCheck, UserX, Crown, Shield, FileText, Search, Filter, UserPlus, Sparkles, TrendingUp } from 'lucide-react';
+import { UserTable } from '../components/UserTable';
+import { UserModal } from '../components/UserModal';
 import { UserNotesModal } from '../components/UserNotesModal';
-import { LoadingSpinner } from '../../../shared/components/LoadingSpinner';
-
-interface UserFilters {
-  search: string;
-  role: 'all' | 'admin' | 'user' | 'moderator';
-  status: 'all' | 'active' | 'inactive';
-  sortBy: 'name' | 'email' | 'created' | 'notes' | 'lastLogin';
-  sortOrder: 'asc' | 'desc';
-}
+import { EmptyUsersState } from '../components/EmptyUsersState';
+import { UserStatCard } from '../components/UserStatCard';
+import { useUsersWithStats, useUserStats } from '../hooks/useUsers';
+import { User } from '../types';
 
 /**
- * Modern Users management page with enhanced UI/UX
+ * Enhanced Users page with dashboard theme consistency
  */
 export const UsersPage: React.FC = () => {
-  const { user: currentUser } = useAuth();
-  const { data: users, isLoading: usersLoading, error: usersError } = useUsers();
-  const { data: userStats, isLoading: statsLoading } = useUserStats();
-  
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedUserForNotes, setSelectedUserForNotes] = useState<{ id: string; name: string } | null>(null);
-  const [filters, setFilters] = useState<UserFilters>({
-    search: '',
-    role: 'all',
-    status: 'all',
-    sortBy: 'name',
-    sortOrder: 'asc',
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+
+  // Fetch users with stats and pagination
+  const { 
+    data: usersData, 
+    isLoading: isUsersLoading, 
+    error: usersError 
+  } = useUsersWithStats({ 
+    page: currentPage, 
+    limit: 15 
   });
 
-  // Filter and sort users
-  const filteredAndSortedUsers = React.useMemo(() => {
-    if (!users) return [];
+  // Fetch user statistics
+  const { 
+    data: stats, 
+    isLoading: isStatsLoading,
+    error: statsError
+  } = useUserStats();
 
-    let filtered = users.filter(user => {
-      const matchesSearch = !filters.search || 
-        user.firstName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.email.toLowerCase().includes(filters.search.toLowerCase());
-      
-      const matchesRole = filters.role === 'all' || user.role === filters.role;
-      const matchesStatus = filters.status === 'all' || 
-        (filters.status === 'active' && user.isActive) ||
-        (filters.status === 'inactive' && !user.isActive);
+  const users = usersData?.users || [];
+  const pagination = usersData?.pagination;
 
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-
-    // Sort users
-    filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
-      
-      switch (filters.sortBy) {
-        case 'name':
-          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-          break;
-        case 'email':
-          aValue = a.email.toLowerCase();
-          bValue = b.email.toLowerCase();
-          break;
-        case 'created':
-          aValue = a.createdAt.getTime();
-          bValue = b.createdAt.getTime();
-          break;
-        case 'notes':
-          aValue = a.notesCount;
-          bValue = b.notesCount;
-          break;
-        case 'lastLogin':
-          aValue = a.lastLoginAt?.getTime() || 0;
-          bValue = b.lastLoginAt?.getTime() || 0;
-          break;
-        default:
-          aValue = a.firstName.toLowerCase();
-          bValue = b.firstName.toLowerCase();
-      }
-
-      if (aValue < bValue) return filters.sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return filters.sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return filtered;
-  }, [users, filters]);
-
-  const handleSelectUser = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
+  const handleCreateUser = () => {
+    setSelectedUser(null);
+    setIsModalOpen(true);
   };
 
-  const handleSelectAll = () => {
-    if (selectedUsers.length === filteredAndSortedUsers.length) {
-      setSelectedUsers([]);
-    } else {
-      setSelectedUsers(filteredAndSortedUsers.map(user => user.id));
-    }
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setIsModalOpen(true);
   };
 
-  const handleViewNotes = (userId: string, userName: string) => {
-    setSelectedUserForNotes({ id: userId, name: userName });
+  const handleViewNotes = (user: User) => {
+    setSelectedUser(user);
+    setIsNotesModalOpen(true);
   };
 
-  const formatDate = (dateString: Date) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedUser(null);
   };
 
-  const formatLastLogin = (dateString?: Date) => {
-    if (!dateString) return 'Belum pernah';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  const handleCloseNotesModal = () => {
+    setIsNotesModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  // Filter users based on search and role filter
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const renderPagination = () => {
+    if (!pagination || pagination.total <= pagination.limit) return null;
+
+    const totalPages = Math.ceil(pagination.total / pagination.limit);
+    const pages = [];
     
-    if (diffInHours < 24) {
-      return `${diffInHours} jam lalu`;
-    } else {
-      const diffInDays = Math.floor(diffInHours / 24);
-      return `${diffInDays} hari lalu`;
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 || 
+        i === totalPages || 
+        (i >= currentPage -2 && i <= currentPage + 2)
+      ) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
     }
-  };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'moderator':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusColor = (isActive: boolean) => {
-    return isActive 
-      ? 'bg-green-100 text-green-800 border-green-200'
-      : 'bg-red-100 text-red-800 border-red-200';
-  };
-
-  const getNotesActivityColor = (notesCount: number) => {
-    if (notesCount >= 30) return 'text-green-600';
-    if (notesCount >= 15) return 'text-yellow-600';
-    if (notesCount >= 5) return 'text-blue-600';
-    return 'text-gray-500';
-  };
-
-  if (usersLoading || statsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" />
+      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200/60">
+        <div className="text-sm text-slate-600">
+          Menampilkan {((currentPage - 1) * pagination.limit) + 1} hingga {Math.min(currentPage * pagination.limit, pagination.total)} dari {pagination.total} pengguna
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 text-sm font-medium text-slate-600 bg-white/80 border border-slate-300/60 rounded-xl hover:bg-slate-50/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            Sebelumnya
+          </button>
+          
+          {pages.map((page, index) => (
+            <button
+              key={index}
+              onClick={() => typeof page === 'number' && handlePageChange(page)}
+              disabled={page === '...'}
+              className={`px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                page === currentPage
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                  : page === '...'
+                  ? 'text-slate-400 cursor-default'
+                  : 'text-slate-600 bg-white/80 border border-slate-300/60 hover:bg-slate-50/80'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 text-sm font-medium text-slate-600 bg-white/80 border border-slate-300/60 rounded-xl hover:bg-slate-50/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            Selanjutnya
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Check if we have a real error (not 404/empty state)
+  const hasRealError = usersError && !(usersError as any)?.status === 404 && !(usersError as any)?.code === 404;
+
+  // Show real errors (not 404)
+  if (hasRealError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-red-100 to-red-200 rounded-3xl flex items-center justify-center mb-6">
+            <UserX className="h-8 w-8 text-red-600" />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 mb-3">Terjadi Kesalahan</h3>
+          <p className="text-slate-600 mb-6">{(usersError as any)?.message || 'Silakan coba lagi nanti'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            Muat Ulang
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (usersError) {
-    return (
-      <div className="text-center py-12">
-        <Users className="h-12 w-12 text-red-400 mx-auto mb-4" />
-        <p className="text-red-600 font-medium">Gagal memuat data users</p>
-        <p className="text-red-500 text-sm mt-1">Silakan refresh halaman</p>
-      </div>
-    );
-  }
+  // Check if we should show empty state
+  const shouldShowEmptyState = !isUsersLoading && users.length === 0 && !hasRealError;
 
   return (
     <div className="space-y-6">
-      {/* Modern Header */}
+      {/* Modern welcome header - matching dashboard theme */}
       <div className="relative overflow-hidden bg-gradient-to-r from-white via-blue-50/50 to-indigo-50/30 backdrop-blur-sm rounded-3xl p-6 lg:p-8 border border-slate-200/60 shadow-sm">
+        {/* Background decoration */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-blue-100/40 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-100/40 to-transparent rounded-full translate-y-24 -translate-x-24"></div>
         
@@ -202,365 +175,162 @@ export const UsersPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Star className="h-5 w-5 text-blue-500" />
+                <Sparkles className="h-6 w-6 text-blue-500" />
                 <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                  Manajemen Pengguna
+                  User Management
                 </span>
               </div>
               
               <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Kelola Pengguna
+                Manajemen Pengguna
               </h1>
               
               <p className="text-slate-600 max-w-2xl leading-relaxed">
-                Pantau aktivitas pengguna, kelola akun, dan analisis statistik notes dalam satu dashboard terpadu.
+                Kelola pengguna, peran, dan izin akses dengan mudah. 
+                Pantau aktivitas dan statistik pengguna dalam satu dashboard yang terintegrasi.
               </p>
             </div>
             
-            <div className="mt-6 lg:mt-0 flex items-center space-x-3">
-              <button className="flex items-center space-x-2 bg-white/80 text-slate-600 px-4 py-2 rounded-xl hover:bg-white border border-slate-200 transition-all duration-200">
-                <Download className="h-4 w-4" />
-                <span>Export</span>
-              </button>
-              <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors duration-200 shadow-lg">
-                <Plus className="h-4 w-4" />
-                <span>Tambah User</span>
-              </button>
+            <div className="mt-6 lg:mt-0 flex items-center space-x-4">
+              <div className="text-right">
+                <div className="flex items-center space-x-2 text-sm font-medium text-slate-700">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span>Live Update</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {new Date().toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+              </div>
+              <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/30"></div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Enhanced Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-600">Total Users</p>
-              <p className="text-2xl font-bold text-slate-800">{userStats?.totalUsers || 0}</p>
-              <p className="text-xs text-slate-500">pengguna terdaftar</p>
-            </div>
-            <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <Users className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-600">User Aktif</p>
-              <p className="text-2xl font-bold text-slate-800">{userStats?.activeUsers || 0}</p>
-              <p className="text-xs text-slate-500">24 jam terakhir</p>
-            </div>
-            <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <UserCheck className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-600">Total Notes</p>
-              <p className="text-2xl font-bold text-slate-800">{userStats?.totalNotes || 0}</p>
-              <p className="text-xs text-slate-500">catatan dibuat</p>
-            </div>
-            <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <FileText className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-
-        <div className="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/60 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-600">Rata-rata Notes</p>
-              <p className="text-2xl font-bold text-slate-800">{userStats?.averageNotesPerUser || 0}</p>
-              <p className="text-xs text-slate-500">per pengguna</p>
-            </div>
-            <div className="h-12 w-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Most Active User Highlight */}
-      {userStats?.mostActiveUser && (
-        <div className="relative overflow-hidden bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 rounded-2xl p-6 text-white shadow-xl">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-          <div className="relative z-10 flex items-center space-x-4">
-            <div className="h-14 w-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-              <Award className="h-7 w-7" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold">🏆 User Paling Aktif</h3>
-              <p className="text-purple-100 mt-1">
-                <span className="font-semibold">{userStats.mostActiveUser.name}</span> dengan{' '}
-                <span className="font-bold text-yellow-300">{userStats.mostActiveUser.notesCount} notes</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Search and Filters */}
-      <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/60 shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari berdasarkan nama, email, atau role..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full pl-12 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200"
-              />
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-3 flex-wrap">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <select
-                value={filters.role}
-                onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value as any }))}
-                className="pl-10 pr-8 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 appearance-none"
-              >
-                <option value="all">Semua Role</option>
-                <option value="admin">Admin</option>
-                <option value="moderator">Moderator</option>
-                <option value="user">User</option>
-              </select>
-            </div>
-
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
-              className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 appearance-none"
-            >
-              <option value="all">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Tidak Aktif</option>
-            </select>
-
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as any }))}
-              className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 appearance-none"
-            >
-              <option value="name">Urutkan: Nama</option>
-              <option value="email">Urutkan: Email</option>
-              <option value="created">Urutkan: Tanggal Dibuat</option>
-              <option value="notes">Urutkan: Jumlah Notes</option>
-              <option value="lastLogin">Urutkan: Login Terakhir</option>
-            </select>
-
+          
+          {/* Action button */}
+          <div className="mt-6 flex justify-end">
             <button
-              onClick={() => setFilters(prev => ({ 
-                ...prev, 
-                sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
-              }))}
-              className="px-4 py-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors duration-200"
-              title={`Ubah ke ${filters.sortOrder === 'asc'? 'descending' : 'ascending'}`}
+              onClick={handleCreateUser}
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
-              <TrendingUp className={`h-4 w-4 ${filters.sortOrder === 'desc' ? 'rotate-180' : ''} transition-transform duration-200`} />
+              <Plus className="h-5 w-5 mr-2" />
+              Tambah User
             </button>
           </div>
         </div>
       </div>
 
-      {/* Modern Users Table */}
-      <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200/60 bg-slate-50/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Daftar Pengguna
-              </h3>
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                {filteredAndSortedUsers.length} pengguna
-              </span>
-            </div>
-            {selectedUsers.length > 0 && (
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-slate-600">
-                  {selectedUsers.length} dipilih
-                </span>
-                <button className="text-sm text-red-600 hover:text-red-700 font-medium px-3 py-1 rounded-lg hover:bg-red-50 transition-colors">
-                  Hapus Terpilih
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Show empty state if no users */}
+      {shouldShowEmptyState ? (
+        <EmptyUsersState onCreateUser={handleCreateUser} />
+      ) : (
+        <>
+          {/* Statistics Cards - matching dashboard theme */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <UserStatCard
+              title="Total Users"
+              value={isStatsLoading ? '...' : (stats?.totalUsers || 0).toString()}
+              icon={<Users className="h-6 w-6 text-white" />}
+              change={stats?.totalUsers ? '+12%' : undefined}
+              changeType="positive"
+              description="Total pengguna terdaftar"
+              gradient="from-blue-500 to-blue-600"
+            />
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50/80">
-              <tr>
-                <th className="px-6 py-4 text-left">
+            <UserStatCard
+              title="Active Users"
+              value={isStatsLoading ? '...' : (stats?.activeUsers || 0).toString()}
+              icon={<UserCheck className="h-6 w-6 text-white" />}
+              change={stats?.activeUsers ? '+8%' : undefined}
+              changeType="positive"
+              description="Pengguna aktif"
+              gradient="from-green-500 to-green-600"
+            />
+
+            <UserStatCard
+              title="Admins"
+              value={isStatsLoading ? '...' : (stats?.adminUsers || 0).toString()}
+              icon={<Crown className="h-6 w-6 text-white" />}
+              change={stats?.adminUsers ? '+2' : undefined}
+              changeType="neutral"
+              description="Administrator"
+              gradient="from-yellow-500 to-yellow-600"
+            />
+
+            <UserStatCard
+              title="Total Notes"
+              value={isStatsLoading ? '...' : (stats?.totalNotes || 0).toString()}
+              icon={<FileText className="h-6 w-6 text-white" />}
+              change={stats?.totalNotes ? '+24%' : undefined}
+              changeType="positive"
+              description="Catatan tersimpan"
+              gradient="from-purple-500 to-purple-600"
+            />
+          </div>
+
+          {/* Filters and Search - matching dashboard theme */}
+          <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <input
-                    type="checkbox"
-                    checked={selectedUsers.length === filteredAndSortedUsers.length && filteredAndSortedUsers.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    type="text"
+                    placeholder="Cari pengguna berdasarkan email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200"
                   />
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Pengguna
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Notes
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Login Terakhir
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Dibuat
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  Aksi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/60">
-              {filteredAndSortedUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors duration-150">
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(user.id)}
-                      onChange={() => handleSelectUser(user.id)}
-                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <img
-                          src={user.avatar || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2`}
-                          alt={`${user.firstName} ${user.lastName}`}
-                          className="h-12 w-12 rounded-2xl object-cover shadow-sm"
-                        />
-                        {user.isActive && (
-                          <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-white rounded-full"></div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">
-                          {user.firstName} {user.lastName}
-                        </p>
-                        <p className="text-sm text-slate-500">{user.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getRoleColor(user.role)}`}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(user.isActive)}`}>
-                      {user.isActive ? 'Aktif' : 'Tidak Aktif'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-sm font-bold ${getNotesActivityColor(user.notesCount)}`}>
-                        {user.notesCount}
-                      </span>
-                      <span className="text-xs text-slate-500">notes</span>
-                      {user.notesCount > 0 && (
-                        <button
-                          onClick={() => handleViewNotes(user.id, `${user.firstName} ${user.lastName}`)}
-                          className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded-md hover:bg-blue-50 transition-colors"
-                        >
-                          Lihat
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2 text-sm text-slate-600">
-                      <Clock className="h-4 w-4 text-slate-400" />
-                      <span>{formatLastLogin(user.lastLoginAt)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2 text-sm text-slate-600">
-                      <Calendar className="h-4 w-4 text-slate-400" />
-                      <span>{formatDate(user.createdAt)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-1">
-                      <button
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors duration-200"
-                        title="Lihat detail user"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors duration-200"
-                        title="Edit user"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      {user.id !== currentUser?.id && (
-                        <button
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors duration-200"
-                          title="Hapus user"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors duration-200"
-                        title="More options"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredAndSortedUsers.length === 0 && (
-          <div className="text-center py-16">
-            <div className="h-16 w-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-slate-400" />
+                </div>
+              </div>
+              
+              <div className="sm:w-48">
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 appearance-none"
+                  >
+                    <option value="all">Semua Peran</option>
+                    <option value="admin">Admin</option>
+                    <option value="moderator">Moderator</option>
+                    <option value="user">User</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-medium text-slate-800 mb-2">Tidak ada pengguna ditemukan</h3>
-            <p className="text-slate-500 text-sm">
-              Coba sesuaikan kriteria pencarian atau filter untuk menemukan pengguna yang Anda cari
-            </p>
           </div>
-        )}
-      </div>
 
-      {/* User Notes Modal */}
-      {selectedUserForNotes && (
-        <UserNotesModal
-          userId={selectedUserForNotes.id}
-          userName={selectedUserForNotes.name}
-          isOpen={true}
-          onClose={() => setSelectedUserForNotes(null)}
-        />
+          {/* Users Table - matching dashboard theme */}
+          <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm rounded-2xl shadow-sm border border-slate-200/60">
+            <UserTable
+              users={filteredUsers}
+              isLoading={isUsersLoading}
+              onEditUser={handleEditUser}
+              onViewNotes={handleViewNotes}
+            />
+            
+            {renderPagination()}
+          </div>
+        </>
       )}
+
+      {/* Modals */}
+      <UserModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        user={selectedUser}
+      />
+
+      <UserNotesModal
+        isOpen={isNotesModalOpen}
+        onClose={handleCloseNotesModal}
+        user={selectedUser}
+      />
     </div>
   );
 };

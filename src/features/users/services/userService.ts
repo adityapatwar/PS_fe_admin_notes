@@ -1,289 +1,245 @@
-import { User, UserNote, CreateUserRequest, UpdateUserRequest, UserStats } from '../types';
+import { apiService } from '../../../shared/services/api';
+import { 
+  User, 
+  UserNote, 
+  CreateUserRequest, 
+  UpdateUserRequest, 
+  ChangeRoleRequest,
+  UserStats, 
+  PaginationParams,
+  UsersListResponse,
+  UsersStatsResponse
+} from '../types';
 
-// Enhanced mock data with notes statistics
-const mockUsers: User[] = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    isActive: true,
-    role: 'admin',
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-15'),
-    lastLoginAt: new Date('2024-01-20T14:22:00Z'),
-    avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 25,
-    lastNoteAt: new Date('2024-01-19T10:30:00Z'),
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@example.com',
-    isActive: true,
-    role: 'user',
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-10'),
-    lastLoginAt: new Date('2024-01-19T16:45:00Z'),
-    avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 18,
-    lastNoteAt: new Date('2024-01-18T15:20:00Z'),
-  },
-  {
-    id: '3',
-    firstName: 'Mike',
-    lastName: 'Johnson',
-    email: 'mike.johnson@example.com',
-    isActive: false,
-    role: 'moderator',
-    createdAt: new Date('2024-01-05'),
-    updatedAt: new Date('2024-01-05'),
-    lastLoginAt: new Date('2024-01-18T13:30:00Z'),
-    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 7,
-    lastNoteAt: new Date('2024-01-17T09:15:00Z'),
-  },
-  {
-    id: '4',
-    firstName: 'Sarah',
-    lastName: 'Wilson',
-    email: 'sarah.wilson@example.com',
-    isActive: true,
-    role: 'user',
-    createdAt: new Date('2024-01-12'),
-    updatedAt: new Date('2024-01-12'),
-    lastLoginAt: new Date('2024-01-20T10:15:00Z'),
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 32,
-    lastNoteAt: new Date('2024-01-20T08:45:00Z'),
-  },
-  {
-    id: '5',
-    firstName: 'David',
-    lastName: 'Brown',
-    email: 'david.brown@example.com',
-    isActive: true,
-    role: 'user',
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-01-08'),
-    lastLoginAt: new Date('2024-01-19T12:20:00Z'),
-    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 12,
-    lastNoteAt: new Date('2024-01-19T11:30:00Z'),
-  },
-  {
-    id: '6',
-    firstName: 'Emily',
-    lastName: 'Davis',
-    email: 'emily.davis@example.com',
-    isActive: true,
-    role: 'user',
-    createdAt: new Date('2024-01-14'),
-    updatedAt: new Date('2024-01-14'),
-    lastLoginAt: new Date('2024-01-20T09:30:00Z'),
-    avatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2',
-    notesCount: 41,
-    lastNoteAt: new Date('2024-01-20T07:15:00Z'),
-  },
-];
-
-const mockUserNotes: UserNote[] = [
-  // John Doe's notes
-  {
-    id: '1',
-    userId: '1',
-    title: 'Project Planning Meeting',
-    content: 'Discussed Q1 roadmap and resource allocation for the new dashboard project.',
-    category: 'meeting',
-    priority: 'high',
-    tags: ['planning', 'roadmap', 'Q1'],
-    isArchived: false,
-    createdAt: new Date('2024-01-19T10:30:00Z'),
-    updatedAt: new Date('2024-01-19T10:30:00Z'),
-  },
-  {
-    id: '2',
-    userId: '1',
-    title: 'User Feedback Analysis',
-    content: 'Compiled user feedback from the last sprint. Need to prioritize bug fixes.',
-    category: 'work',
-    priority: 'medium',
-    tags: ['feedback', 'bugs', 'sprint'],
-    isArchived: false,
-    createdAt: new Date('2024-01-18T14:20:00Z'),
-    updatedAt: new Date('2024-01-18T14:20:00Z'),
-  },
-  // Jane Smith's notes
-  {
-    id: '3',
-    userId: '2',
-    title: 'Design System Updates',
-    content: 'Updated color palette and typography guidelines for better accessibility.',
-    category: 'work',
-    priority: 'medium',
-    tags: ['design', 'accessibility', 'guidelines'],
-    isArchived: false,
-    createdAt: new Date('2024-01-18T15:20:00Z'),
-    updatedAt: new Date('2024-01-18T15:20:00Z'),
-  },
-  {
-    id: '4',
-    userId: '2',
-    title: 'Weekend Reading List',
-    content: 'Books to read: Clean Code, Design Patterns, System Design Interview.',
-    category: 'personal',
-    priority: 'low',
-    tags: ['books', 'learning', 'development'],
-    isArchived: false,
-    createdAt: new Date('2024-01-17T18:00:00Z'),
-    updatedAt: new Date('2024-01-17T18:00:00Z'),
-  },
-  // Sarah Wilson's notes (most active user)
-  {
-    id: '5',
-    userId: '4',
-    title: 'API Integration Strategy',
-    content: 'Planning the integration approach for third-party APIs in the new microservices architecture.',
-    category: 'project',
-    priority: 'high',
-    tags: ['api', 'microservices', 'architecture'],
-    isArchived: false,
-    createdAt: new Date('2024-01-20T08:45:00Z'),
-    updatedAt: new Date('2024-01-20T08:45:00Z'),
-  },
-  {
-    id: '6',
-    userId: '4',
-    title: 'Team Standup Notes',
-    content: 'Daily standup: Completed user authentication, working on dashboard components.',
-    category: 'meeting',
-    priority: 'medium',
-    tags: ['standup', 'progress', 'authentication'],
-    isArchived: false,
-    createdAt: new Date('2024-01-19T09:15:00Z'),
-    updatedAt: new Date('2024-01-19T09:15:00Z'),
-  },
-  // More notes for other users...
-  {
-    id: '7',
-    userId: '5',
-    title: 'Database Optimization Ideas',
-    content: 'Identified slow queries and potential indexing improvements for better performance.',
-    category: 'work',
-    priority: 'high',
-    tags: ['database', 'optimization', 'performance'],
-    isArchived: false,
-    createdAt: new Date('2024-01-19T11:30:00Z'),
-    updatedAt: new Date('2024-01-19T11:30:00Z'),
-  },
-  {
-    id: '8',
-    userId: '6',
-    title: 'Mobile App Feature Ideas',
-    content: 'Brainstorming new features for the mobile app: dark mode, offline sync, push notifications.',
-    category: 'idea',
-    priority: 'medium',
-    tags: ['mobile', 'features', 'brainstorming'],
-    isArchived: false,
-    createdAt: new Date('2024-01-20T07:15:00Z'),
-    updatedAt: new Date('2024-01-20T07:15:00Z'),
-  },
-];
-
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
+/**
+ * User management service with real API integration and empty state handling
+ */
 export const userService = {
-  async getUsers(): Promise<User[]> {
-    await delay(500);
-    return mockUsers;
+  /**
+   * Get paginated list of users
+   */
+  async getUsers(params: PaginationParams = {}): Promise<UsersListResponse> {
+    const { page = 1, limit = 10 } = params;
+    
+    try {
+      const response = await apiService.get<UsersListResponse>('/v1/users', {
+        params: { page, limit }
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch users');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      // Handle 404 as empty state instead of error
+      if (error?.status === 404 || error?.code === 404) {
+        return {
+          users: [],
+          pagination: {
+            page: page,
+            limit: limit,
+            total: 0
+          }
+        };
+      }
+      throw error;
+    }
   },
 
+  /**
+   * Get users with statistics
+   */
+  async getUsersWithStats(params: PaginationParams = {}): Promise<UsersStatsResponse> {
+    const { page = 1, limit = 15 } = params;
+    
+    try {
+      const response = await apiService.get<UsersStatsResponse>('/v1/users/stats', {
+        params: { page, limit }
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch users with statistics');
+      }
+
+      return response.data;
+    } catch (error: any) {
+      // Handle 404 as empty state instead of error
+      if (error?.status === 404 || error?.code === 404) {
+        return {
+          users: [],
+          pagination: {
+            page: page,
+            limit: limit,
+            total: 0
+          }
+        };
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get user by ID
+   */
   async getUserById(userId: string): Promise<User> {
-    await delay(300);
-    const user = mockUsers.find(u => u.id === userId);
-    if (!user) {
-      throw new Error(`User with id ${userId} not found`);
+    const response = await apiService.get<User>(`/v1/users/${userId}`);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || `User with id ${userId} not found`);
     }
-    return user;
+
+    return response.data;
   },
 
-  async getUserNotes(userId: string): Promise<UserNote[]> {
-    await delay(300);
-    return mockUserNotes.filter(note => note.userId === userId);
-  },
-
-  async getUserStats(): Promise<UserStats> {
-    await delay(400);
-    const totalUsers = mockUsers.length;
-    const activeUsers = mockUsers.filter(u => u.isActive).length;
-    const inactiveUsers = totalUsers - activeUsers;
-    const adminUsers = mockUsers.filter(u => u.role === 'admin').length;
-    const moderatorUsers = mockUsers.filter(u => u.role === 'moderator').length;
-    const regularUsers = mockUsers.filter(u => u.role === 'user').length;
-    const totalNotes = mockUsers.reduce((sum, user) => sum + user.notesCount, 0);
-    const averageNotesPerUser = totalUsers > 0 ? Math.round(totalNotes / totalUsers) : 0;
-    
-    // Find most active user
-    const mostActiveUser = mockUsers.reduce((prev, current) => 
-      (prev.notesCount > current.notesCount) ? prev : current
-    );
-
-    return {
-      totalUsers,
-      activeUsers,
-      inactiveUsers,
-      adminUsers,
-      moderatorUsers,
-      regularUsers,
-      totalNotes,
-      averageNotesPerUser,
-      mostActiveUser: {
-        id: mostActiveUser.id,
-        name: `${mostActiveUser.firstName} ${mostActiveUser.lastName}`,
-        notesCount: mostActiveUser.notesCount,
-      },
-    };
-  },
-
+  /**
+   * Create new user
+   */
   async createUser(userData: CreateUserRequest): Promise<User> {
-    await delay(800);
-    const newUser: User = {
-      id: (mockUsers.length + 1).toString(),
-      ...userData,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      notesCount: 0,
-    };
-    mockUsers.push(newUser);
-    return newUser;
+    const response = await apiService.post<User>('/v1/users', userData);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create user');
+    }
+
+    return response.data;
   },
 
+  /**
+   * Update user
+   */
   async updateUser(userId: string, userData: UpdateUserRequest): Promise<User> {
-    await delay(600);
-    const userIndex = mockUsers.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      throw new Error(`User with id ${userId} not found`);
+    const response = await apiService.put<User>(`/v1/users/${userId}`, userData);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to update user');
     }
-    
-    const updatedUser = {
-      ...mockUsers[userIndex],
-      ...userData,
-      updatedAt: new Date(),
-    };
-    
-    mockUsers[userIndex] = updatedUser;
-    return updatedUser;
+
+    return response.data;
   },
 
+  /**
+   * Delete user
+   */
   async deleteUser(userId: string): Promise<void> {
-    await delay(400);
-    const userIndex = mockUsers.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-      throw new Error(`User with id ${userId} not found`);
+    const response = await apiService.delete(`/v1/users/${userId}`);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Failed to delete user');
     }
-    mockUsers.splice(userIndex, 1);
+  },
+
+  /**
+   * Change user role
+   */
+  async changeUserRole(userId: string, roleData: ChangeRoleRequest): Promise<User> {
+    const response = await apiService.patch<User>(`/v1/users/${userId}/role`, roleData);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to change user role');
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Get user notes (mock implementation - adjust based on actual API)
+   */
+  async getUserNotes(userId: string): Promise<UserNote[]> {
+    // This is a mock implementation since the API spec doesn't include notes endpoints
+    // Replace with actual API call when available
+    const mockUserNotes: UserNote[] = [
+      {
+        id: '1',
+        userId: userId,
+        title: 'Sample Note',
+        content: 'This is a sample note for user ' + userId,
+        category: 'work',
+        priority: 'medium',
+        tags: ['sample', 'note'],
+        isArchived: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return mockUserNotes;
+  },
+
+  /**
+   * Get user statistics (computed from users data with empty state handling)
+   */
+  async getUserStats(): Promise<UserStats> {
+    try {
+      // Get all users to compute statistics
+      const usersResponse = await this.getUsersWithStats({ page: 1, limit: 1000 });
+      const users = usersResponse.users;
+      
+      const totalUsers = usersResponse.pagination.total;
+      
+      // Handle empty state
+      if (totalUsers === 0 || users.length === 0) {
+        return {
+          totalUsers: 0,
+          activeUsers: 0,
+          inactiveUsers: 0,
+          adminUsers: 0,
+          moderatorUsers: 0,
+          regularUsers: 0,
+          totalNotes: 0,
+          averageNotesPerUser: 0,
+          mostActiveUser: null,
+        };
+      }
+      
+      const activeUsers = users.filter(u => u.status === 'active').length;
+      const inactiveUsers = totalUsers - activeUsers;
+      const adminUsers = users.filter(u => u.role === 'admin').length;
+      const moderatorUsers = users.filter(u => u.role === 'moderator').length;
+      const regularUsers = users.filter(u => u.role === 'user').length;
+      const totalNotes = users.reduce((sum, user) => sum + (user.notesCount || 0), 0);
+      const averageNotesPerUser = totalUsers > 0 ? Math.round(totalNotes / totalUsers) : 0;
+      
+      // Find most active user
+      const mostActiveUser = users.reduce((prev, current) => 
+        ((prev?.notesCount || 0) > (current?.notesCount || 0)) ? prev : current
+      );
+
+      return {
+        totalUsers,
+        activeUsers,
+        inactiveUsers,
+        adminUsers,
+        moderatorUsers,
+        regularUsers,
+        totalNotes,
+        averageNotesPerUser,
+        mostActiveUser: mostActiveUser ? {
+          id: mostActiveUser.id,
+          name: mostActiveUser.email.split('@')[0], // Use email prefix as name
+          notesCount: mostActiveUser.notesCount || 0,
+        } : null,
+      };
+    } catch (error: any) {
+      // Handle 404 as empty state for statistics
+      if (error?.status === 404 || error?.code === 404) {
+        return {
+          totalUsers: 0,
+          activeUsers: 0,
+          inactiveUsers: 0,
+          adminUsers: 0,
+          moderatorUsers: 0,
+          regularUsers: 0,
+          totalNotes: 0,
+          averageNotesPerUser: 0,
+          mostActiveUser: null,
+        };
+      }
+      
+      console.error('Failed to compute user statistics:', error);
+      throw new Error('Failed to retrieve user statistics');
+    }
   },
 };

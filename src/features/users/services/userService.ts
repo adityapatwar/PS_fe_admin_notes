@@ -174,7 +174,7 @@ export const userService = {
   async getUserStats(): Promise<UserStats> {
     try {
       // Get all users to compute statistics
-      const usersResponse = await this.getUsersWithStats({ page: 1, limit: 1000 });
+      const usersResponse = await userService.getUsersWithStats({ page: 1, limit: 1000 });
       const users = usersResponse.users;
       
       const totalUsers = usersResponse.pagination.total;

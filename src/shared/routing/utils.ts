@@ -1,22 +1,11 @@
-import { routeConfig, routePermissions } from './routes';
-import type { UserRole } from './types';
-
 /**
- * Utility functions for routing operations
+ * Routing utility functions
  */
 
-/**
- * Check if a route requires authentication
- */
-export const isProtectedRoute = (pathname: string): boolean => {
-  const protectedPaths = Object.values(routeConfig.protected);
-  return protectedPaths.some(path => 
-    pathname === path || pathname.startsWith(path + '/')
-  );
-};
+import { routeConfig } from './routes';
 
 /**
- * Check if a route is public (no authentication required)
+ * Check if a path is a public route
  */
 export const isPublicRoute = (pathname: string): boolean => {
   const publicPaths = Object.values(routeConfig.public);
@@ -24,92 +13,33 @@ export const isPublicRoute = (pathname: string): boolean => {
 };
 
 /**
- * Check if user has permission to access a route
+ * Check if a path is a protected route
  */
-export const hasRoutePermission = (
-  pathname: string, 
-  userRole?: UserRole
-): boolean => {
-  if (!userRole) return false;
-  
-  const permissions = routePermissions[pathname];
-  if (!permissions) return true; // No specific permissions required
-  
-  return permissions.includes(userRole);
+export const isProtectedRoute = (pathname: string): boolean => {
+  const protectedPaths = Object.values(routeConfig.protected);
+  return protectedPaths.some(path => pathname.startsWith(path));
 };
 
 /**
- * Get the default route for a user role
+ * Get the default redirect path for authenticated users
  */
-export const getDefaultRoute = (userRole?: UserRole): string => {
-  // All authenticated users default to dashboard
+export const getDefaultRedirectPath = (): string => {
   return routeConfig.protected.dashboard;
 };
 
 /**
- * Get breadcrumb trail for a given pathname
+ * Get the login path
  */
-export const getBreadcrumbs = (pathname: string): Array<{ name: string; path: string }> => {
-  const breadcrumbs: Array<{ name: string; path: string }> = [];
-  
-  // Add home/dashboard as first breadcrumb for protected routes
-  if (isProtectedRoute(pathname)) {
-    breadcrumbs.push({
-      name: 'Dashboard',
-      path: routeConfig.protected.dashboard,
-    });
-  }
-  
-  // Add current page breadcrumb
-  switch (pathname) {
-    case routeConfig.protected.users:
-      breadcrumbs.push({ name: 'Users', path: pathname });
-      break;
-    case routeConfig.protected.settings:
-      breadcrumbs.push({ name: 'Settings', path: pathname });
-      break;
-    default:
-      // For dashboard or unknown routes, don't add additional breadcrumbs
-      break;
-  }
-  
-  return breadcrumbs;
+export const getLoginPath = (): string => {
+  return routeConfig.public.login;
 };
 
 /**
- * Generate navigation URL with query parameters
+ * Build a path with query parameters
  */
-export const generateRouteUrl = (
-  path: string, 
-  params?: Record<string, string | number>
-): string => {
+export const buildPath = (path: string, params?: Record<string, string>): string => {
   if (!params) return path;
   
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    searchParams.append(key, String(value));
-  });
-  
+  const searchParams = new URLSearchParams(params);
   return `${path}?${searchParams.toString()}`;
-};
-
-/**
- * Extract route parameters from pathname
- */
-export const extractRouteParams = (
-  pathname: string,
-  template: string
-): Record<string, string> => {
-  const params: Record<string, string> = {};
-  const templateParts = template.split('/');
-  const pathnameParts = pathname.split('/');
-  
-  templateParts.forEach((part, index) => {
-    if (part.startsWith(':')) {
-      const paramName = part.slice(1);
-      params[paramName] = pathnameParts[index] || '';
-    }
-  });
-  
-  return params;
 };

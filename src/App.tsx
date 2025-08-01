@@ -1,23 +1,35 @@
 import React from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 // Context Providers
 import { AuthProvider } from './features/auth/contexts/AuthContext';
 
-// Components
-import { ErrorBoundary } from './shared/components/ErrorBoundary';
-import { AppRouter } from './shared/routing';
+// Route Components
+import { 
+  publicRoutes, 
+  protectedRoutes, 
+  ProtectedLayout, 
+  RootRedirect, 
+  notFoundRoute 
+} from './shared/routing/routes';
 
-// Create React Query client with v4 configuration
+// Global Components
+import { ErrorBoundary } from './shared/components/ErrorBoundary';
+
+// Styles
+import './index.css';
+
+/**
+ * React Query client configuration
+ */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
     },
     mutations: {
       retry: 1,
@@ -26,24 +38,58 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Main App component with comprehensive routing and error handling
- * Routing logic has been moved to shared/routing for better accessibility
+ * Main App component
+ * Admin dashboard application without register functionality
  */
-function App() {
+const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <Router>
-            <AppRouter />
+            <div className="min-h-screen bg-gray-50">
+              <Routes>
+                {/* Public routes (login only for admin) */}
+                {publicRoutes.map((route) => (
+                  <Route
+                    key={route.key}
+                    path={route.path}
+                    element={route.element}
+                  />
+                ))}
+
+                {/* Protected routes with layout */}
+                <Route path="/" element={<ProtectedLayout />}>
+                  {/* Root redirect to dashboard */}
+                  <Route index element={<RootRedirect />} />
+                  
+                  {/* Protected application routes with relative paths */}
+                  {protectedRoutes.map((route) => (
+                    <Route
+                      key={route.key}
+                      path={route.path}
+                      element={route.element}
+                    />
+                  ))}
+                </Route>
+
+                {/* 404 Not Found */}
+                <Route
+                  path={notFoundRoute.path}
+                  element={notFoundRoute.element}
+                />
+              </Routes>
+            </div>
           </Router>
         </AuthProvider>
-        
-        {/* React Query DevTools (development only) */}
-        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+
+        {/* React Query Devtools (development only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={false} />
+        )}
       </QueryClientProvider>
     </ErrorBoundary>
   );
-}
+};
 
 export default App;

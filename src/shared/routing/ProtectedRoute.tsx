@@ -5,71 +5,76 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireAdmin?: boolean;
+  requiredRole?: 'admin' | 'moderator' | 'user';
+  requiredPermission?: string;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requireAdmin = false 
+/**
+ * Protected route component that handles authentication and authorization
+ * Updated to work with new auth system without register functionality
+ */
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiredRole,
+  requiredPermission,
 }) => {
-  const { user, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user, hasRole, hasPermission } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   // Redirect to login if not authenticated
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!isAuthenticated) {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    );
   }
 
-  // Check admin requirement
-  if (requireAdmin && user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+  // Check role-based access
+  if (requiredRole && !hasRole(requiredRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-4">
+            You don't have permission to access this page.
+          </p>
+          <p className="text-sm text-gray-500">
+            Required role: {requiredRole} | Your role: {user?.role}
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  return <>{children}</>;
-};
-
-// Higher-order component for authentication
-export const withAuth = <P extends object>(
-  Component: React.ComponentType<P>,
-  requireAdmin = false
-) => {
-  const AuthenticatedComponent = (props: P) => (
-    <ProtectedRoute requireAdmin={requireAdmin}>
-      <Component {...props} />
-    </ProtectedRoute>
-  );
-
-  AuthenticatedComponent.displayName = `withAuth(${Component.displayName || Component.name})`;
-  
-  return AuthenticatedComponent;
-};
-
-// Role-based guard component
-interface RoleGuardProps {
-  children: React.ReactNode;
-  allowedRoles: string[];
-  fallback?: React.ReactNode;
-}
-
-export const RoleGuard: React.FC<RoleGuardProps> = ({ 
-  children, 
-  allowedRoles, 
-  fallback = null 
-}) => {
-  const { user } = useAuth();
-
-  if (!user || !allowedRoles.includes(user.role)) {
-    return <>{fallback}</>;
+  // Check permission-based access
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-4">
+            You don't have the required permission to access this page.
+          </p>
+          <p className="text-sm text-gray-500">
+            Required permission: {requiredPermission}
+          </p>
+        </div>
+      </div>
+    );
   }
 
+  // Render children if all checks pass
   return <>{children}</>;
 };

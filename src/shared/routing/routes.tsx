@@ -7,7 +7,6 @@ import { ProtectedRoute } from './ProtectedRoute';
 
 // Page Components
 import { LoginPage } from '../../features/auth/pages/LoginPage';
-import { RegisterPage } from '../../features/auth/pages/RegisterPage';
 import { DashboardPage } from '../../features/dashboard/pages/DashboardPage';
 import { UsersPage } from '../../features/users/pages/UsersPage';
 import { SettingsPage } from '../../features/settings/pages/SettingsPage';
@@ -20,14 +19,13 @@ export const routeConfig = {
   // Public routes
   public: {
     login: '/login',
-    register: '/register',
   },
-  // Protected routes
+  // Protected routes (using relative paths for nested routing)
   protected: {
     root: '/',
-    dashboard: '/dashboard',
-    users: '/users',
-    settings: '/settings',
+    dashboard: 'dashboard', // Relative path for nested route
+    users: 'users',         // Relative path for nested route
+    settings: 'settings',   // Relative path for nested route
   },
   // Fallback
   notFound: '*',
@@ -42,15 +40,11 @@ export const publicRoutes = [
     element: <LoginPage />,
     key: 'login',
   },
-  {
-    path: routeConfig.public.register,
-    element: <RegisterPage />,
-    key: 'register',
-  },
 ];
 
 /**
  * Protected route definitions (authentication required)
+ * Using relative paths for proper nested routing
  */
 export const protectedRoutes = [
   {
@@ -83,7 +77,7 @@ export const ProtectedLayout = () => (
  * Root redirect component
  */
 export const RootRedirect = () => (
-  <Navigate to={routeConfig.protected.dashboard} replace />
+  <Navigate to="/dashboard" replace />
 );
 
 /**
@@ -97,35 +91,36 @@ export const notFoundRoute = {
 
 /**
  * Route permissions configuration
- * Can be extended for role-based access control
+ * Using absolute paths for permission checking
  */
 export const routePermissions = {
-  [routeConfig.protected.dashboard]: ['user', 'moderator', 'admin'],
-  [routeConfig.protected.users]: ['user', 'moderator', 'admin'], // Currently accessible to all authenticated users
-  [routeConfig.protected.settings]: ['user', 'moderator', 'admin'],
+  '/dashboard': ['user', 'moderator', 'admin'],
+  '/users': ['moderator', 'admin'], // Restricted to moderator and admin
+  '/settings': ['admin'], // Admin only
 } as const;
 
 /**
  * Navigation menu configuration
  * Used by sidebar and other navigation components
+ * Using absolute paths for navigation
  */
 export const navigationConfig = [
   {
     name: 'Dashboard',
-    path: routeConfig.protected.dashboard,
+    path: '/dashboard',
     icon: 'dashboard',
     roles: ['user', 'moderator', 'admin'],
   },
   {
     name: 'Users',
-    path: routeConfig.protected.users,
+    path: '/users',
     icon: 'users',
-    roles: ['user', 'moderator', 'admin'],
+    roles: ['moderator', 'admin'],
   },
   {
     name: 'Settings',
-    path: routeConfig.protected.settings,
+    path: '/settings',
     icon: 'settings',
-    roles: ['user', 'moderator', 'admin'],
+    roles: ['admin'],
   },
 ] as const;

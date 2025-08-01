@@ -53,10 +53,10 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
   refreshUser: () => Promise<void>;
+  isAuthenticated: boolean;
   isAdmin: () => boolean;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
@@ -77,7 +77,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Initialize authentication state on app load
-   * This replaces the useAuthPersistence hook to avoid circular dependency
    */
   useEffect(() => {
     const initializeAuth = async () => {
@@ -125,26 +124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Register new user account
-   */
-  const register = useCallback(async (
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string
-  ): Promise<void> => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-      const response = await authService.register({ email, password, firstName, lastName });
-      dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.user } });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
-      dispatch({ type: 'AUTH_FAILURE', payload: { error: errorMessage } });
-      throw error;
-    }
-  }, []);
-
-  /**
    * Logout user and clear session
    */
   const logout = useCallback((): void => {
@@ -174,6 +153,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logout();
     }
   }, [logout]);
+
+  /**
+   * Check if user is authenticated
+   */
+  const isAuthenticated = Boolean(state.user);
 
   /**
    * Check if user has admin role
@@ -211,10 +195,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     ...state,
     login,
-    register,
     logout,
     clearError,
     refreshUser,
+    isAuthenticated,
     isAdmin,
     hasRole,
     hasPermission,

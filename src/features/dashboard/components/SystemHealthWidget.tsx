@@ -93,42 +93,48 @@ export const SystemHealthWidget: React.FC = () => {
     return 'green';
   };
 
+  // Safe string formatting with null checks
+  const formatStatus = (status: string | undefined | null): string => {
+    if (!status || typeof status !== 'string') return 'Unknown';
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   const metrics = [
     {
       label: 'System Status',
-      value: health.status.charAt(0).toUpperCase() + health.status.slice(1),
-      status: health.status,
+      value: formatStatus(health.status),
+      status: health.status || 'unknown',
       icon: <Activity className="h-4 w-4" />,
     },
     {
       label: 'Database',
-      value: health.databaseStatus.charAt(0).toUpperCase() + health.databaseStatus.slice(1),
-      status: health.databaseStatus,
+      value: formatStatus(health.databaseStatus),
+      status: health.databaseStatus || 'unknown',
       icon: <Database className="h-4 w-4" />,
     },
     {
       label: 'Uptime',
-      value: health.uptime,
+      value: health.uptime || 'Unknown',
       status: 'healthy',
       icon: <Clock className="h-4 w-4" />,
     },
     {
       label: 'Memory Usage',
-      value: `${health.memoryUsage}%`,
-      status: health.memoryUsage >= 90 ? 'critical' : health.memoryUsage >= 75 ? 'warning' : 'healthy',
+      value: `${health.memoryUsage || 0}%`,
+      status: (health.memoryUsage || 0) >= 90 ? 'critical' : (health.memoryUsage || 0) >= 75 ? 'warning' : 'healthy',
       icon: <HardDrive className="h-4 w-4" />,
-      progress: health.memoryUsage,
+      progress: health.memoryUsage || 0,
     },
     {
       label: 'CPU Usage',
-      value: `${health.cpuUsage}%`,
-      status: health.cpuUsage >= 90 ? 'critical' : health.cpuUsage >= 75 ? 'warning' : 'healthy',
+      value: `${health.cpuUsage || 0}%`,
+      status: (health.cpuUsage || 0) >= 90 ? 'critical' : (health.cpuUsage || 0) >= 75 ? 'warning' : 'healthy',
       icon: <Cpu className="h-4 w-4" />,
-      progress: health.cpuUsage,
+      progress: health.cpuUsage || 0,
     },
   ];
 
-  const overallStatusColor = getStatusColor(health.status);
+  const overallStatusColor = getStatusColor(health.status || 'unknown');
 
   return (
     <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
@@ -141,7 +147,7 @@ export const SystemHealthWidget: React.FC = () => {
           <div className="flex items-center space-x-2">
             <div className={`h-2 w-2 bg-${overallStatusColor}-500 rounded-full animate-pulse`}></div>
             <span className={`text-sm font-medium text-${overallStatusColor}-600`}>
-              {health.status.charAt(0).toUpperCase() + health.status.slice(1)}
+              {formatStatus(health.status)}
             </span>
           </div>
         </div>

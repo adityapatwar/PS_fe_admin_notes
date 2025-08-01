@@ -25,14 +25,11 @@ export const AppRouter: React.FC = () => {
       ))}
       
       {/* Protected Routes with Layout */}
-      <Route
-        path="/"
-        element={<ProtectedLayout />}
-      >
+      <Route path="/" element={<ProtectedLayout />}>
         {/* Root redirect to dashboard */}
         <Route index element={<RootRedirect />} />
         
-        {/* Protected application routes */}
+        {/* Protected application routes using relative paths */}
         {protectedRoutes.map((route) => (
           <Route 
             key={route.key}

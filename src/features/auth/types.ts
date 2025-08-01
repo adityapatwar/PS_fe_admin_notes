@@ -1,3 +1,6 @@
+/**
+ * User interface representing a user in the system
+ */
 export interface User {
   id: string;
   email: string;
@@ -6,34 +9,38 @@ export interface User {
   role: 'admin' | 'moderator' | 'user';
   isActive: boolean;
   createdAt: Date;
-  lastLoginAt?: Date;
+  lastLoginAt: Date;
   avatar?: string;
 }
 
+/**
+ * Login request payload
+ */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * Authentication response from login
+ */
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+/**
+ * Authentication state for context
+ */
 export interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
 }
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken?: string;
-}
-
+/**
+ * Authentication actions for reducer
+ */
 export type AuthAction =
   | { type: 'AUTH_START' }
   | { type: 'AUTH_SUCCESS'; payload: { user: User } }
@@ -42,16 +49,22 @@ export type AuthAction =
   | { type: 'AUTH_CLEAR_ERROR' };
 
 /**
- * JWT Token payload structure
+ * JWT Token payload interface
  */
-export interface JWTPayload {
-  sub: string; // User ID
+export interface TokenPayload {
+  sub: string; // user ID
   email: string;
-  role: string;
-  exp: number; // Expiration timestamp
-  iat: number; // Issued at timestamp
-  first_name?: string;
-  last_name?: string;
-  is_active?: boolean;
-  avatar?: string;
+  role: 'admin' | 'moderator' | 'user';
+  exp: number; // expiration timestamp
+  iat: number; // issued at timestamp
+}
+
+/**
+ * API Error interface
+ */
+export interface ApiError {
+  success: false;
+  message: string;
+  data: null;
+  status?: number;
 }

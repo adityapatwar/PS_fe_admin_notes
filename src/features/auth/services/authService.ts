@@ -1,4 +1,4 @@
-import { User, LoginRequest, RegisterRequest, AuthResponse } from '../types';
+import { User, LoginRequest, AuthResponse } from '../types';
 import { apiService } from '../../../shared/services/api';
 import { tokenService } from './tokenService';
 
@@ -27,6 +27,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const authService = {
   /**
    * Login user with email and password
+   * Implements /api/v1/auth/login endpoint
    */
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     try {
@@ -55,11 +56,11 @@ export const authService = {
         token,
       };
     } catch (error: any) {
-      // Handle API errors
+      // Handle API errors with proper status codes
       if (error.status === 401) {
         throw new Error('Invalid email or password');
       } else if (error.status === 400) {
-        throw new Error('Please provide valid email and password');
+        throw new Error(error.message || 'Please provide valid email and password');
       } else if (error.message) {
         throw new Error(error.message);
       } else {
@@ -69,50 +70,8 @@ export const authService = {
   },
 
   /**
-   * Register new user
-   */
-  register: async (userData: RegisterRequest): Promise<AuthResponse> => {
-    try {
-      const response = await apiService.post<{
-        id: string;
-        email: string;
-        role: string;
-        created_at: string;
-      }>('/v1/auth/register', {
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (!response.success || !response.data) {
-        throw new Error(response.message || 'Registration failed');
-      }
-
-      // Parse user data from registration response
-      const user = parseUserFromApiResponse(response.data);
-
-      // After successful registration, automatically log in the user
-      const loginResponse = await authService.login({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      return loginResponse;
-    } catch (error: any) {
-      // Handle API errors
-      if (error.status === 500 && error.message?.includes('already')) {
-        throw new Error('An account with this email already exists');
-      } else if (error.status === 400) {
-        throw new Error('Please provide valid registration information');
-      } else if (error.message) {
-        throw new Error(error.message);
-      } else {
-        throw new Error('Registration failed. Please try again.');
-      }
-    }
-  },
-
-  /**
    * Logout user
+   * Note: No server-side logout endpoint as per API documentation
    */
   logout: async (): Promise<void> => {
     await delay(300); // Small delay for UX
@@ -142,6 +101,7 @@ export const authService = {
 
   /**
    * Refresh authentication token
+   * Implements /api/v1/auth/refresh endpoint
    */
   refreshToken: async (): Promise<string> => {
     try {

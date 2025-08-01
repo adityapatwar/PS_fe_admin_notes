@@ -10,4 +10,11 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
   },
+  // Define environment variables for TypeScript
+  define: {
+    // Ensure process.env is not used in client code
+    'process.env': {},
+  },
+  // Environment variables configuration
+  envPrefix: 'VITE_',
 })

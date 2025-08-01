@@ -1,134 +1,69 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dashboardApiService } from '../services/dashboardApiService';
-import { AnalyticsParams, ActivitiesParams, UpdateDashboardConfigRequest } from '../types/api';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService } from '../services/dashboardService';
 
-// Query keys for caching
-export const dashboardQueryKeys = {
-  all: ['dashboard'] as const,
-  statistics: () => [...dashboardQueryKeys.all, 'statistics'] as const,
-  userAnalytics: (params: AnalyticsParams) => [...dashboardQueryKeys.all, 'userAnalytics', params] as const,
-  notesAnalytics: (params: AnalyticsParams) => [...dashboardQueryKeys.all, 'notesAnalytics', params] as const,
-  systemHealth: () => [...dashboardQueryKeys.all, 'systemHealth'] as const,
-  activities: (params: ActivitiesParams) => [...dashboardQueryKeys.all, 'activities', params] as const,
-  config: () => [...dashboardQueryKeys.all, 'config'] as const,
+export const useDashboardStats = () => {
+  return useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: dashboardService.getDashboardStats,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+  });
 };
 
-/**
- * Hook for dashboard statistics
- */
+// Add the missing export for useDashboardStatistics
 export const useDashboardStatistics = () => {
   return useQuery({
-    queryKey: dashboardQueryKeys.statistics(),
-    queryFn: async () => {
-      const response = await dashboardApiService.getStatistics();
-      return response.data;
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute cache
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+    queryKey: ['dashboardStatistics'],
+    queryFn: dashboardService.getDashboardStatistics,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
-/**
- * Hook for user analytics
- */
-export const useUserAnalytics = (params: AnalyticsParams = { days: 30 }) => {
-  return useQuery({
-    queryKey: dashboardQueryKeys.userAnalytics(params),
-    queryFn: async () => {
-      const response = await dashboardApiService.getUserAnalytics(params);
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-/**
- * Hook for notes analytics
- */
-export const useNotesAnalytics = (params: AnalyticsParams = { days: 30 }) => {
-  return useQuery({
-    queryKey: dashboardQueryKeys.notesAnalytics(params),
-    queryFn: async () => {
-      const response = await dashboardApiService.getNotesAnalytics(params);
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-/**
- * Hook for system health
- */
 export const useSystemHealth = () => {
   return useQuery({
-    queryKey: dashboardQueryKeys.systemHealth(),
-    queryFn: async () => {
-      const response = await dashboardApiService.getSystemHealth();
-      return response.data;
-    },
-    staleTime: 30 * 1000, // 30 seconds cache
-    cacheTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 60 * 1000, // Refetch every minute
+    queryKey: ['systemHealth'],
+    queryFn: dashboardService.getSystemHealth,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
 };
 
-/**
- * Hook for recent activities
- */
-export const useRecentActivities = (params: ActivitiesParams = { limit: 20 }) => {
+export const useRecentActivity = () => {
   return useQuery({
-    queryKey: dashboardQueryKeys.activities(params),
-    queryFn: async () => {
-      const response = await dashboardApiService.getRecentActivities(params);
-      return response.data;
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute cache
-    cacheTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ['recentActivity'],
+    queryFn: dashboardService.getRecentActivity,
+    staleTime: 1 * 60 * 1000, // 1 minute
     refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
   });
 };
 
-/**
- * Hook for dashboard configuration
- */
-export const useDashboardConfig = () => {
+// Add the missing export for useRecentActivities (alias for useRecentActivity)
+export const useRecentActivities = (params?: { limit?: number }) => {
   return useQuery({
-    queryKey: dashboardQueryKeys.config(),
-    queryFn: async () => {
-      const response = await dashboardApiService.getDashboardConfig();
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    queryKey: ['recentActivities', params],
+    queryFn: () => dashboardService.getRecentActivity(),
+    staleTime: 1 * 60 * 1000, // 1 minute
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
   });
 };
 
-/**
- * Hook for updating dashboard configuration
- */
-export const useUpdateDashboardConfig = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (config: UpdateDashboardConfigRequest) =>
-      dashboardApiService.updateDashboardConfig(config),
-    onSuccess: () => {
-      // Invalidate and refetch dashboard config
-      queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.config() });
-    },
+// Add the missing export for useUserAnalytics
+export const useUserAnalytics = (params?: { days?: number }) => {
+  return useQuery({
+    queryKey: ['userAnalytics', params],
+    queryFn: () => dashboardService.getUserAnalytics(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
-/**
- * Hook to invalidate all dashboard queries
- */
-export const useInvalidateDashboard = () => {
-  const queryClient = useQueryClient();
-
-  return () => {
-    queryClient.invalidateQueries({ queryKey: dashboardQueryKeys.all });
-  };
+// Add the missing export for useNotesAnalytics
+export const useNotesAnalytics = (params?: { days?: number }) => {
+  return useQuery({
+    queryKey: ['notesAnalytics', params],
+    queryFn: () => dashboardService.getNotesAnalytics(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
 };

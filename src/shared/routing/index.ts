@@ -6,6 +6,9 @@
 // Main router component
 export { AppRouter } from './AppRouter';
 
+// Protected route component
+export { ProtectedRoute } from './ProtectedRoute';
+
 // Route configurations
 export { 
   routeConfig, 
@@ -18,8 +21,8 @@ export {
   notFoundRoute
 } from './routes';
 
-// Route utilities
+// Route utilities (if they exist)
 export * from './utils';
 
-// Types
+// Types (if they exist)
 export type { RoutePermission, NavigationItem } from './types';

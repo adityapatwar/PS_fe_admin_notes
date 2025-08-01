@@ -1,248 +1,171 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { ApiResponse, ApiError } from '../types/api';
+import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { tokenService } from '../../features/auth/services/tokenService';
-import { authService } from '../../features/auth/services/authService';
 
 /**
- * Enhanced API service with automatic token refresh and comprehensive error handling
+ * API Response interface matching the documented format
+ */
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data: T | null;
+}
+
+/**
+ * API Error interface
+ */
+export interface ApiError {
+  success: false;
+  message: string;
+  data: null;
+  status?: number;
+}
+
+/**
+ * API Configuration using Vite environment variables
+ */
+const API_CONFIG = {
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+};
+
+/**
+ * Create axios instance with default configuration
+ */
+const createApiInstance = (): AxiosInstance => {
+  const instance = axios.create(API_CONFIG);
+
+  // Request interceptor to add auth token
+  instance.interceptors.request.use(
+    (config) => {
+      const token = tokenService.getToken();
+      if (token && !tokenService.isTokenExpired(token)) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+
+  // Response interceptor to handle API responses
+  instance.interceptors.response.use(
+    (response: AxiosResponse<ApiResponse>) => {
+      // Return the response as-is for successful requests
+      return response;
+    },
+    async (error: AxiosError<ApiResponse>) => {
+      const originalRequest = error.config as any;
+
+      // Handle token refresh for 401 errors
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          const currentToken = tokenService.getToken();
+          if (currentToken) {
+            // Try to refresh the token
+            const refreshResponse = await instance.post<ApiResponse<{ token: string }>>('/v1/auth/refresh', {
+              token: currentToken,
+            });
+
+            if (refreshResponse.data.success && refreshResponse.data.data?.token) {
+              const newToken = refreshResponse.data.data.token;
+              tokenService.setToken(newToken);
+              
+              // Retry the original request with new token
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return instance(originalRequest);
+            }
+          }
+        } catch (refreshError) {
+          // Refresh failed, clear token and redirect to login
+          tokenService.removeToken();
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      }
+
+      // Transform axios error to our API error format
+      const apiError: ApiError = {
+        success: false,
+        message: error.response?.data?.message || error.message || 'An unexpected error occurred',
+        data: null,
+        status: error.response?.status,
+      };
+
+      return Promise.reject(apiError);
+    }
+  );
+
+  return instance;
+};
+
+/**
+ * API service class with typed methods
  */
 class ApiService {
-  private api: AxiosInstance;
-  private baseURL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000';
-  private isRefreshing = false;
-  private failedQueue: Array<{
-    resolve: (value?: any) => void;
-    reject: (error?: any) => void;
-  }> = [];
+  private instance: AxiosInstance;
 
   constructor() {
-    this.api = axios.create({
-      baseURL: this.baseURL,
-      timeout: 15000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    this.setupInterceptors();
+    this.instance = createApiInstance();
   }
 
   /**
-   * Setup request and response interceptors
+   * GET request
    */
-  private setupInterceptors() {
-    // Request interceptor to add auth token
-    this.api.interceptors.request.use(
-      (config: InternalAxiosRequestConfig) => {
-        const token = tokenService.getAccessToken();
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        console.error('Request interceptor error:', error);
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor for error handling and token refresh
-    this.api.interceptors.response.use(
-      (response: AxiosResponse) => response,
-      async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-        // Handle 401 Unauthorized errors
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          // Skip token refresh for auth endpoints
-          if (originalRequest.url?.includes('/auth/')) {
-            return Promise.reject(this.handleError(error));
-          }
-
-          if (this.isRefreshing) {
-            // If already refreshing, queue the request
-            return new Promise((resolve, reject) => {
-              this.failedQueue.push({ resolve, reject });
-            }).then(() => {
-              return this.api(originalRequest);
-            }).catch((err) => {
-              return Promise.reject(err);
-            });
-          }
-
-          originalRequest._retry = true;
-          this.isRefreshing = true;
-
-          try {
-            await authService.refreshToken();
-            this.processQueue(null);
-            
-            // Retry original request with new token
-            const token = tokenService.getAccessToken();
-            if (token && originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            
-            return this.api(originalRequest);
-          } catch (refreshError) {
-            this.processQueue(refreshError);
-            this.handleAuthFailure();
-            return Promise.reject(refreshError);
-          } finally {
-            this.isRefreshing = false;
-          }
-        }
-
-        return Promise.reject(this.handleError(error));
-      }
-    );
+  async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.instance.get<ApiResponse<T>>(url, config);
+    return response.data;
   }
 
   /**
-   * Process queued requests after token refresh
+   * POST request
    */
-  private processQueue(error: any) {
-    this.failedQueue.forEach(({ resolve, reject }) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
-    
-    this.failedQueue = [];
+  async post<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.instance.post<ApiResponse<T>>(url, data, config);
+    return response.data;
   }
 
   /**
-   * Handle authentication failure
+   * PUT request
    */
-  private handleAuthFailure() {
-    tokenService.clearAll();
-    
-    // Redirect to login page if not already there
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+  async put<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.instance.put<ApiResponse<T>>(url, data, config);
+    return response.data;
   }
 
   /**
-   * Handle and format API errors
+   * PATCH request
    */
-  private handleError(error: AxiosError): ApiError {
-    const response = error.response;
-    
-    if (response) {
-      const data = response.data as any;
-      return {
-        message: data?.message || `HTTP ${response.status}: ${response.statusText}`,
-        status: response.status,
-        code: data?.code,
-      };
-    }
-
-    if (error.request) {
-      return {
-        message: 'Network error - please check your internet connection',
-        status: 0,
-        code: 'NETWORK_ERROR',
-      };
-    }
-
-    return {
-      message: error.message || 'An unexpected error occurred',
-      status: 0,
-      code: 'UNKNOWN_ERROR',
-    };
+  async patch<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.instance.patch<ApiResponse<T>>(url, data, config);
+    return response.data;
   }
 
   /**
-   * Generic GET request
+   * DELETE request
    */
-  async get<T>(url: string, params?: any): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.api.get(url, { params });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  async delete<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.instance.delete<ApiResponse<T>>(url, config);
+    return response.data;
   }
 
   /**
-   * Generic POST request
+   * Update base URL (useful for environment switching)
    */
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.api.post(url, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  setBaseURL(baseURL: string): void {
+    this.instance.defaults.baseURL = baseURL;
   }
 
   /**
-   * Generic PUT request
+   * Get current base URL
    */
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.api.put(url, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Generic PATCH request
-   */
-  async patch<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.api.patch(url, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Generic DELETE request
-   */
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
-    try {
-      const response = await this.api.delete(url);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Upload file with progress tracking
-   */
-  async upload<T>(
-    url: string, 
-    file: File, 
-    onProgress?: (progress: number) => void
-  ): Promise<ApiResponse<T>> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await this.api.post(url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            onProgress(progress);
-          }
-        },
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  getBaseURL(): string {
+    return this.instance.defaults.baseURL || '';
   }
 }
 
+// Export singleton instance
 export const apiService = new ApiService();

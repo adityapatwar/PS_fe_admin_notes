@@ -1,4 +1,10 @@
 // Dashboard API Types based on real API documentation
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
 export interface DashboardStatistics {
   totalUsers: number;
   activeUsers: number;
@@ -16,8 +22,8 @@ export interface RegistrationTrend {
 
 export interface Demographics {
   roleDistribution: {
-    admin: number;
-    user: number;
+    admin?: number;
+    user?: number;
   };
   activityPatterns: {
     daily: number;
@@ -39,11 +45,11 @@ export interface CreationTrend {
 export interface ActivityPatterns {
   averageLength: number;
   mostActiveHours: number[];
-  topCategories: string[];
+  topCategories?: string[];
 }
 
 export interface NotesAnalyticsData {
-  creationTrends: CreationTrend[];
+  creationTrends: CreationTrend[] | null;
   activityPatterns: ActivityPatterns;
 }
 

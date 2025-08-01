@@ -1,23 +1,22 @@
 import React from 'react';
-import { Activity, User, FileText, Shield, Clock, AlertCircle } from 'lucide-react';
+import { Activity, User, FileText, LogIn, UserPlus, Edit, Trash2, Shield, Clock, Globe } from 'lucide-react';
 import { useRecentActivities } from '../hooks/useDashboardApi';
-import { Activity as ActivityType } from '../types/api';
 
 export const RecentActivitiesWidget: React.FC = () => {
   const { data: activitiesData, isLoading, error } = useRecentActivities({ limit: 10 });
 
-  // Extract activities array from the API response
-  const activities = activitiesData?.activities || [];
-
-  const getActivityIcon = (type: ActivityType['type']) => {
+  const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'user_registration':
       case 'user_login':
-        return <User className="h-4 w-4" />;
+        return <LogIn className="h-4 w-4" />;
+      case 'user_registration':
+        return <UserPlus className="h-4 w-4" />;
       case 'note_created':
-      case 'note_updated':
-      case 'note_deleted':
         return <FileText className="h-4 w-4" />;
+      case 'note_updated':
+        return <Edit className="h-4 w-4" />;
+      case 'note_deleted':
+        return <Trash2 className="h-4 w-4" />;
       case 'admin_action':
         return <Shield className="h-4 w-4" />;
       default:
@@ -25,16 +24,16 @@ export const RecentActivitiesWidget: React.FC = () => {
     }
   };
 
-  const getActivityColor = (type: ActivityType['type']) => {
+  const getActivityColor = (type: string) => {
     switch (type) {
-      case 'user_registration':
-        return 'green';
       case 'user_login':
         return 'blue';
+      case 'user_registration':
+        return 'green';
       case 'note_created':
-        return 'indigo';
+        return 'emerald';
       case 'note_updated':
-        return 'yellow';
+        return 'amber';
       case 'note_deleted':
         return 'red';
       case 'admin_action':
@@ -44,63 +43,75 @@ export const RecentActivitiesWidget: React.FC = () => {
     }
   };
 
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const activityTime = new Date(timestamp);
-    const diffInMinutes = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
-  };
-
-  const generateActivityDescription = (activity: ActivityType): string => {
-    const descriptions: Record<string, string> = {
-      'user_registration': 'New user registered',
-      'user_login': 'User logged in',
-      'note_created': 'New note created',
-      'note_updated': 'Note updated',
-      'note_deleted': 'Note deleted',
-      'admin_action': 'Admin action performed',
-    };
-
-    let description = descriptions[activity.type] || 'Unknown activity';
-    
-    // Add specific details if available
-    if (activity.details?.title) {
-      description += ` - "${activity.details.title}"`;
+  const getActivityTitle = (type: string) => {
+    switch (type) {
+      case 'user_login':
+        return 'Login Pengguna';
+      case 'user_registration':
+        return 'Registrasi Baru';
+      case 'note_created':
+        return 'Catatan Dibuat';
+      case 'note_updated':
+        return 'Catatan Diperbarui';
+      case 'note_deleted':
+        return 'Catatan Dihapus';
+      case 'admin_action':
+        return 'Aksi Admin';
+      default:
+        return 'Aktivitas';
     }
-    
-    return description;
   };
 
-  const getUserName = (userEmail: string): string => {
-    return userEmail.split('@')[0] || 'Unknown User';
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'Baru saja';
+      if (diffInMinutes < 60) return `${diffInMinutes} menit yang lalu`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} jam yang lalu`;
+      
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (err) {
+      return timestamp;
+    }
+  };
+
+  const getUserAgent = (userAgent?: string) => {
+    if (!userAgent) return 'Unknown Browser';
+    
+    if (userAgent.includes('Chrome')) return 'Chrome';
+    if (userAgent.includes('Firefox')) return 'Firefox';
+    if (userAgent.includes('Safari')) return 'Safari';
+    if (userAgent.includes('Edge')) return 'Edge';
+    
+    return 'Unknown Browser';
   };
 
   if (isLoading) {
     return (
-      <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-purple-50">
           <div className="animate-pulse">
-            <div className="h-6 bg-slate-200 rounded w-32 mb-2"></div>
-            <div className="h-4 bg-slate-200 rounded w-48"></div>
+            <div className="h-6 bg-slate-200 rounded w-40 mb-2"></div>
+            <div className="h-4 bg-slate-200 rounded w-56"></div>
           </div>
         </div>
-        <div className="p-6 space-y-3">
+        <div className="p-6 space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="animate-pulse flex items-start space-x-3 p-3 rounded-xl">
-              <div className="h-8 w-8 bg-slate-200 rounded-full"></div>
+            <div key={i} className="animate-pulse flex items-center space-x-4 p-4 rounded-xl bg-slate-50/50">
+              <div className="h-10 w-10 bg-slate-200 rounded-full"></div>
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                <div className="h-4 bg-slate-200 rounded w-32"></div>
+                <div className="h-3 bg-slate-200 rounded w-48"></div>
               </div>
-              <div className="h-3 bg-slate-200 rounded w-16"></div>
+              <div className="h-3 bg-slate-200 rounded w-20"></div>
             </div>
           ))}
         </div>
@@ -110,43 +121,47 @@ export const RecentActivitiesWidget: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-red-50">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-800">Recent Activities</h3>
-              <p className="text-sm text-slate-600 mt-1">Error loading activities</p>
+              <h3 className="text-lg font-semibold text-slate-800">Aktivitas Terkini</h3>
+              <p className="text-sm text-slate-600 mt-1">Error memuat aktivitas</p>
             </div>
-            <AlertCircle className="h-5 w-5 text-red-500" />
+            <Activity className="h-5 w-5 text-red-500" />
           </div>
         </div>
         <div className="p-6">
           <div className="text-center py-4">
-            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-            <p className="text-sm text-red-600">Failed to load recent activities</p>
-            <p className="text-xs text-red-500 mt-1">{error.message}</p>
+            <Activity className="h-8 w-8 text-red-500 mx-auto mb-2" />
+            <p className="text-sm text-red-600">Gagal memuat aktivitas terkini</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!activities || !Array.isArray(activities) || activities.length === 0) {
+  if (!activitiesData || !activitiesData.activities || activitiesData.activities.length === 0) {
     return (
-      <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-purple-50">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-800">Recent Activities</h3>
-              <p className="text-sm text-slate-600 mt-1">Latest system activities</p>
+              <h3 className="text-lg font-semibold text-slate-800">Aktivitas Terkini</h3>
+              <p className="text-sm text-slate-600 mt-1">Log aktivitas pengguna real-time</p>
             </div>
-            <Activity className="h-5 w-5 text-blue-500" />
+            <Activity className="h-5 w-5 text-purple-500" />
           </div>
         </div>
         <div className="p-6">
           <div className="text-center py-8">
-            <Activity className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-            <p className="text-sm text-slate-600">No recent activities</p>
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Activity className="h-8 w-8 text-slate-400" />
+            </div>
+            <h4 className="text-lg font-medium text-slate-600 mb-2">Belum Ada Aktivitas</h4>
+            <p className="text-slate-500">
+              Aktivitas pengguna akan muncul di sini setelah ada interaksi dengan sistem.
+            </p>
           </div>
         </div>
       </div>
@@ -154,98 +169,92 @@ export const RecentActivitiesWidget: React.FC = () => {
   }
 
   return (
-    <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
-      <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
+    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
+      <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-purple-50">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-800">Recent Activities</h3>
-            <p className="text-sm text-slate-600 mt-1">Latest system activities</p>
+            <h3 className="text-lg font-semibold text-slate-800">Aktivitas Terkini</h3>
+            <p className="text-sm text-slate-600 mt-1">Log aktivitas pengguna real-time</p>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
-            <span className="text-xs text-slate-500">Live</span>
+            <Activity className="h-5 w-5 text-purple-500" />
+            <span className="text-xs text-slate-500">
+              {activitiesData.pagination.total} total
+            </span>
           </div>
         </div>
       </div>
       
       <div className="p-6">
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {activities.map((activity) => {
+        <div className="space-y-4">
+          {activitiesData.activities.map((activity) => {
             const color = getActivityColor(activity.type);
-            const icon = getActivityIcon(activity.type);
-            const description = generateActivityDescription(activity);
-            const userName = getUserName(activity.userEmail);
             
             return (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-all duration-200 group">
-                <div className={`h-8 w-8 bg-${color}-100 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-${color}-200 transition-colors duration-200`}>
+              <div
+                key={activity.id}
+                className="flex items-center space-x-4 p-4 rounded-xl bg-slate-50/50 hover:bg-slate-100/50 transition-all duration-200 border border-transparent hover:border-slate-200/60"
+              >
+                {/* Activity Icon */}
+                <div className={`h-10 w-10 bg-${color}-100 rounded-full flex items-center justify-center`}>
                   <div className={`text-${color}-600`}>
-                    {icon}
+                    {getActivityIcon(activity.type)}
                   </div>
                 </div>
                 
+                {/* Activity Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors duration-200">
-                        {description}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs text-slate-600 font-medium">
-                          {userName}
-                        </span>
-                        <span className="text-xs text-slate-400">•</span>
-                        <span className="text-xs text-slate-500">
-                          {activity.userEmail}
-                        </span>
-                        <span className="text-xs text-slate-400">•</span>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-3 w-3 text-slate-400" />
-                          <span className="text-xs text-slate-500">
-                            {formatTimeAgo(activity.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {activity.details && Object.keys(activity.details).length > 0 && (
-                        <div className="mt-2 text-xs text-slate-500">
-                          {activity.details.ip && (
-                            <span className="inline-block bg-slate-100 px-2 py-1 rounded mr-2">
-                              IP: {activity.details.ip}
-                            </span>
-                          )}
-                          {activity.details.noteId && (
-                            <span className="inline-block bg-slate-100 px-2 py-1 rounded mr-2">
-                              Note ID: {activity.details.noteId}
-                            </span>
-                          )}
-                          {activity.details.userAgent && (
-                            <span className="inline-block bg-slate-100 px-2 py-1 rounded">
-                              {activity.details.userAgent.substring(0, 50)}...
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <h4 className="text-sm font-medium text-slate-800">
+                      {getActivityTitle(activity.type)}
+                    </h4>
+                    <span className={`px-2 py-1 text-xs font-medium bg-${color}-100 text-${color}-700 rounded-full`}>
+                      {activity.type.replace('_', ' ')}
+                    </span>
                   </div>
+                  
+                  <div className="flex items-center space-x-4 text-xs text-slate-600">
+                    <div className="flex items-center space-x-1">
+                      <User className="h-3 w-3" />
+                      <span>{activity.userEmail}</span>
+                    </div>
+                    
+                    {activity.details?.ip && (
+                      <div className="flex items-center space-x-1">
+                        <Globe className="h-3 w-3" />
+                        <span>{activity.details.ip}</span>
+                      </div>
+                    )}
+                    
+                    {activity.details?.userAgent && (
+                      <div className="flex items-center space-x-1">
+                        <span>{getUserAgent(activity.details.userAgent)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Timestamp */}
+                <div className="flex items-center space-x-1 text-xs text-slate-500">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatTimestamp(activity.timestamp)}</span>
                 </div>
               </div>
             );
           })}
         </div>
         
-        {activitiesData?.pagination && (
-          <div className="mt-4 pt-4 border-t border-slate-200">
-            <div className="flex items-center justify-between text-sm text-slate-600">
-              <span>
-                Showing {activities.length} of {activitiesData.pagination.total} activities
-              </span>
-              {activitiesData.pagination.hasNext && (
-                <button className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium">
-                  View all activities →
-                </button>
-              )}
-            </div>
+        {/* Pagination Info */}
+        {activitiesData.pagination.total > activitiesData.activities.length && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-600">
+              Menampilkan {activitiesData.activities.length} dari {activitiesData.pagination.total} aktivitas
+            </p>
+            {activitiesData.pagination.hasNext && (
+              <button className="mt-2 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Muat Lebih Banyak
+              </button>
+            )}
           </div>
         )}
       </div>

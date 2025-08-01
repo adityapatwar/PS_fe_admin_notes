@@ -1,12 +1,15 @@
 import React from 'react';
 import { Activity, User, FileText, Shield, Clock, AlertCircle } from 'lucide-react';
 import { useRecentActivities } from '../hooks/useDashboardApi';
-import { RecentActivity } from '../types/api';
+import { Activity as ActivityType } from '../types/api';
 
 export const RecentActivitiesWidget: React.FC = () => {
-  const { data: activities, isLoading, error } = useRecentActivities({ limit: 10 });
+  const { data: activitiesData, isLoading, error } = useRecentActivities({ limit: 10 });
 
-  const getActivityIcon = (type: RecentActivity['type']) => {
+  // Extract activities array from the API response
+  const activities = activitiesData?.activities || [];
+
+  const getActivityIcon = (type: ActivityType['type']) => {
     switch (type) {
       case 'user_registration':
       case 'user_login':
@@ -22,7 +25,7 @@ export const RecentActivitiesWidget: React.FC = () => {
     }
   };
 
-  const getActivityColor = (type: RecentActivity['type']) => {
+  const getActivityColor = (type: ActivityType['type']) => {
     switch (type) {
       case 'user_registration':
         return 'green';
@@ -54,6 +57,30 @@ export const RecentActivitiesWidget: React.FC = () => {
     
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays}d ago`;
+  };
+
+  const generateActivityDescription = (activity: ActivityType): string => {
+    const descriptions: Record<string, string> = {
+      'user_registration': 'New user registered',
+      'user_login': 'User logged in',
+      'note_created': 'New note created',
+      'note_updated': 'Note updated',
+      'note_deleted': 'Note deleted',
+      'admin_action': 'Admin action performed',
+    };
+
+    let description = descriptions[activity.type] || 'Unknown activity';
+    
+    // Add specific details if available
+    if (activity.details?.title) {
+      description += ` - "${activity.details.title}"`;
+    }
+    
+    return description;
+  };
+
+  const getUserName = (userEmail: string): string => {
+    return userEmail.split('@')[0] || 'Unknown User';
   };
 
   if (isLoading) {
@@ -97,13 +124,14 @@ export const RecentActivitiesWidget: React.FC = () => {
           <div className="text-center py-4">
             <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
             <p className="text-sm text-red-600">Failed to load recent activities</p>
+            <p className="text-xs text-red-500 mt-1">{error.message}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!activities || activities.length === 0) {
+  if (!activities || !Array.isArray(activities) || activities.length === 0) {
     return (
       <div className="bg-white/60 backdrop-blur-sm shadow-sm rounded-2xl border border-slate-200/60 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-blue-50">
@@ -145,6 +173,8 @@ export const RecentActivitiesWidget: React.FC = () => {
           {activities.map((activity) => {
             const color = getActivityColor(activity.type);
             const icon = getActivityIcon(activity.type);
+            const description = generateActivityDescription(activity);
+            const userName = getUserName(activity.userEmail);
             
             return (
               <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 transition-all duration-200 group">
@@ -158,17 +188,17 @@ export const RecentActivitiesWidget: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors duration-200">
-                        {activity.description}
+                        {description}
                       </p>
                       <div className="flex items-center space-x-2 mt-1">
-                        {activity.userName && (
-                          <>
-                            <span className="text-xs text-slate-600 font-medium">
-                              {activity.userName}
-                            </span>
-                            <span className="text-xs text-slate-400">•</span>
-                          </>
-                        )}
+                        <span className="text-xs text-slate-600 font-medium">
+                          {userName}
+                        </span>
+                        <span className="text-xs text-slate-400">•</span>
+                        <span className="text-xs text-slate-500">
+                          {activity.userEmail}
+                        </span>
+                        <span className="text-xs text-slate-400">•</span>
                         <div className="flex items-center space-x-1">
                           <Clock className="h-3 w-3 text-slate-400" />
                           <span className="text-xs text-slate-500">
@@ -179,19 +209,19 @@ export const RecentActivitiesWidget: React.FC = () => {
                       
                       {activity.details && Object.keys(activity.details).length > 0 && (
                         <div className="mt-2 text-xs text-slate-500">
-                          {activity.details.email && (
+                          {activity.details.ip && (
                             <span className="inline-block bg-slate-100 px-2 py-1 rounded mr-2">
-                              {activity.details.email}
+                              IP: {activity.details.ip}
                             </span>
                           )}
-                          {activity.details.title && (
+                          {activity.details.noteId && (
                             <span className="inline-block bg-slate-100 px-2 py-1 rounded mr-2">
-                              "{activity.details.title}"
+                              Note ID: {activity.details.noteId}
                             </span>
                           )}
-                          {activity.details.source && (
+                          {activity.details.userAgent && (
                             <span className="inline-block bg-slate-100 px-2 py-1 rounded">
-                              via {activity.details.source}
+                              {activity.details.userAgent.substring(0, 50)}...
                             </span>
                           )}
                         </div>
@@ -204,11 +234,20 @@ export const RecentActivitiesWidget: React.FC = () => {
           })}
         </div>
         
-        <div className="mt-4 pt-4 border-t border-slate-200">
-          <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200">
-            View all activities →
-          </button>
-        </div>
+        {activitiesData?.pagination && (
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-between text-sm text-slate-600">
+              <span>
+                Showing {activities.length} of {activitiesData.pagination.total} activities
+              </span>
+              {activitiesData.pagination.hasNext && (
+                <button className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium">
+                  View all activities →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

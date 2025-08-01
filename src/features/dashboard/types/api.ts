@@ -1,55 +1,111 @@
-// Dashboard API Types
+// Dashboard API Types based on real API documentation
 export interface DashboardStatistics {
   totalUsers: number;
-  totalNotes: number;
   activeUsers: number;
+  totalNotes: number;
+  averageNotesPerUser: number;
   newUsers: number;
-  notesToday: number;
   usersToday: number;
+  notesToday: number;
+}
+
+export interface RegistrationTrend {
+  date: string;
+  count: number;
+}
+
+export interface Demographics {
+  roleDistribution: {
+    admin: number;
+    user: number;
+  };
+  activityPatterns: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+  };
 }
 
 export interface UserAnalyticsData {
+  registrationTrends: RegistrationTrend[];
+  demographics: Demographics;
+}
+
+export interface CreationTrend {
   date: string;
-  registrations: number;
-  logins: number;
-  activeUsers: number;
+  count: number;
+}
+
+export interface ActivityPatterns {
+  averageLength: number;
+  mostActiveHours: number[];
+  topCategories: string[];
 }
 
 export interface NotesAnalyticsData {
-  date: string;
-  notesCreated: number;
-  notesUpdated: number;
-  notesDeleted: number;
+  creationTrends: CreationTrend[];
+  activityPatterns: ActivityPatterns;
+}
+
+export interface DatabaseHealth {
+  status: string;
+  connectionPool: {
+    active: number;
+    idle: number;
+    max: number;
+  };
+  responseTime: string;
+}
+
+export interface SystemMetrics {
+  uptime: string;
+  memoryUsage: string;
+  cpuUsage: string;
+  diskUsage: string;
+}
+
+export interface ApiMetrics {
+  requestsPerMinute: number;
+  averageResponseTime: string;
+  errorRate: string;
 }
 
 export interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical';
-  databaseStatus: 'up' | 'down' | 'slow';
-  uptime: string;
-  memoryUsage: number;
-  cpuUsage: number;
+  database: DatabaseHealth;
+  system: SystemMetrics;
+  api: ApiMetrics;
 }
 
 export interface ActivityDetails {
-  email?: string;
-  source?: string;
+  ip?: string;
+  userAgent?: string;
   noteId?: string;
   title?: string;
   [key: string]: any;
 }
 
-export interface RecentActivity {
+export interface Activity {
   id: string;
-  type: 'user_registration' | 'user_login' | 'note_created' | 'note_updated' | 'note_deleted' | 'admin_action';
-  description: string;
-  userId?: string;
-  userName?: string;
+  type: 'user_login' | 'user_registration' | 'note_created' | 'note_updated' | 'note_deleted' | 'admin_action';
+  userId: string;
+  userEmail: string;
   timestamp: string;
   details?: ActivityDetails;
 }
 
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  hasNext: boolean;
+}
+
+export interface RecentActivitiesData {
+  activities: Activity[];
+  pagination: Pagination;
+}
+
 export interface DashboardConfig {
-  id: string;
   userId: string;
   theme: 'light' | 'dark';
   refreshInterval: number;
@@ -60,16 +116,22 @@ export interface DashboardConfig {
 }
 
 export interface UpdateDashboardConfigRequest {
-  theme: 'light' | 'dark';
-  refreshInterval: number;
+  theme?: 'light' | 'dark';
+  refreshInterval?: number;
   widgets?: string[];
   layout?: 'grid' | 'list' | 'compact';
 }
 
 export interface AnalyticsParams {
   days?: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface ActivitiesParams {
+  page?: number;
   limit?: number;
 }
+
+// Legacy types for backward compatibility
+export interface RecentActivity extends Activity {}

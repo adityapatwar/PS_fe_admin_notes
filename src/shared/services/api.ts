@@ -24,7 +24,7 @@ export interface ApiError {
  * API Configuration using Vite environment variables
  */
 const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -85,6 +85,12 @@ const createApiInstance = (): AxiosInstance => {
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }
+      }
+
+      // Handle 403 Forbidden (Admin role required)
+      if (error.response?.status === 403) {
+        console.error('Admin role required for this action');
+        // You might want to show a toast notification here
       }
 
       // Transform axios error to our API error format

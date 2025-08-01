@@ -1,20 +1,53 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
+import { 
+  AnalyticsParams, 
+  ActivitiesParams, 
+  UpdateDashboardConfigRequest 
+} from '../types/api';
 
+// Legacy hooks for backward compatibility
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboardStats'],
     queryFn: dashboardService.getDashboardStats,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
-// Add the missing export for useDashboardStatistics
+export const useRecentActivity = () => {
+  return useQuery({
+    queryKey: ['recentActivity'],
+    queryFn: dashboardService.getRecentActivity,
+    staleTime: 1 * 60 * 1000, // 1 minute
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+  });
+};
+
+// New hooks using real API endpoints
 export const useDashboardStatistics = () => {
   return useQuery({
     queryKey: ['dashboardStatistics'],
     queryFn: dashboardService.getDashboardStatistics,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useUserAnalytics = (params: AnalyticsParams = {}) => {
+  return useQuery({
+    queryKey: ['userAnalytics', params],
+    queryFn: () => dashboardService.getUserAnalytics(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+export const useNotesAnalytics = (params: AnalyticsParams = {}) => {
+  return useQuery({
+    queryKey: ['notesAnalytics', params],
+    queryFn: () => dashboardService.getNotesAnalytics(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -29,41 +62,33 @@ export const useSystemHealth = () => {
   });
 };
 
-export const useRecentActivity = () => {
-  return useQuery({
-    queryKey: ['recentActivity'],
-    queryFn: dashboardService.getRecentActivity,
-    staleTime: 1 * 60 * 1000, // 1 minute
-    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
-  });
-};
-
-// Add the missing export for useRecentActivities (alias for useRecentActivity)
-export const useRecentActivities = (params?: { limit?: number }) => {
+export const useRecentActivities = (params: ActivitiesParams = {}) => {
   return useQuery({
     queryKey: ['recentActivities', params],
-    queryFn: () => dashboardService.getRecentActivity(),
+    queryFn: () => dashboardService.getRecentActivities(params),
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
   });
 };
 
-// Add the missing export for useUserAnalytics
-export const useUserAnalytics = (params?: { days?: number }) => {
+export const useDashboardConfig = () => {
   return useQuery({
-    queryKey: ['userAnalytics', params],
-    queryFn: () => dashboardService.getUserAnalytics(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    queryKey: ['dashboardConfig'],
+    queryFn: dashboardService.getDashboardConfig,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 };
 
-// Add the missing export for useNotesAnalytics
-export const useNotesAnalytics = (params?: { days?: number }) => {
-  return useQuery({
-    queryKey: ['notesAnalytics', params],
-    queryFn: () => dashboardService.getNotesAnalytics(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+export const useUpdateDashboardConfig = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (config: UpdateDashboardConfigRequest) => 
+      dashboardService.updateDashboardConfig(config),
+    onSuccess: () => {
+      // Invalidate and refetch dashboard config
+      queryClient.invalidateQueries({ queryKey: ['dashboardConfig'] });
+    },
   });
 };

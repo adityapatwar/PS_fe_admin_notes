@@ -1,6 +1,6 @@
 // Auth feature exports
 export { AuthProvider, useAuth } from './contexts/AuthContext';
-export { ProtectedRoute, withAuth, RoleGuard } from './components/ProtectedRoute';
+export { ProtectedRoute, withAuth, RoleGuard } from '../../shared/routing/ProtectedRoute';
 export { LoginPage } from './pages/LoginPage';
 export { RegisterPage } from './pages/RegisterPage';
 export { authService } from './services/authService';

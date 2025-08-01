@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 
 // Layout Components
 import { Layout } from '../layout/Layout';
-import { ProtectedRoute } from '../../features/auth/components/ProtectedRoute';
+import { ProtectedRoute } from './ProtectedRoute';
 
 // Page Components
 import { LoginPage } from '../../features/auth/pages/LoginPage';
